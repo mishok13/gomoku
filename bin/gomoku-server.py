@@ -11,7 +11,6 @@ It should serve several purposes:
 
 
 import argparse
-import sys
 import simplejson
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory
@@ -23,8 +22,11 @@ class GomokuProtocol(Int32StringReceiver):
 
     """Each client will have one of these"""
 
+
     def stringReceived(self, string):
         string = simplejson.loads(string)
+
+        self.sendString(simplejson.dumps(string))
 
 
 
