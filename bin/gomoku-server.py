@@ -58,7 +58,7 @@ class GomokuProtocol(Int32StringReceiver):
 
     def auth(self, request):
         try:
-            if self.factory.db[request['user']] == request['password']:
+            if self.factory.db[str(request['user'])] == str(request['password']):
                 self.state = AUTHENTICATED
                 self.send({'action': utils.AUTH_OK})
             else:
@@ -69,12 +69,12 @@ class GomokuProtocol(Int32StringReceiver):
 
     def register(self, request):
         try:
-            if request['user'] in self.factory.db:
+            if str(request['user']) in self.factory.db:
                 # This is bad, we shouldn't allow someone overwriting already
                 # existing users
                 self.send({'action': utils.BADREQUEST})
             else:
-                self.factory.db[request['user']] = request['password']
+                self.factory.db[str(request['user'])] = str(request['password'])
                 self.send({'action': utils.REG_OK})
         except KeyError:
             self.send({'action': utils.AUTH_ERR_NOTFOUND})

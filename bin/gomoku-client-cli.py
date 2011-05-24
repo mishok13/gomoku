@@ -44,6 +44,7 @@ class GomokuClientProtocol(Int32StringReceiver):
 
     def authenticated(self, response):
         self.factory.state = AUTHENTICATED
+        self.send({'action': utils.FIELD})
 
 
     def registered(self, response):
