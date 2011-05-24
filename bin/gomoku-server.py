@@ -13,20 +13,21 @@ It should serve several purposes:
 
 
 import argparse
-import simplejson
 import random
 from gomoku import utils
 import anydbm
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory
 from twisted.protocols.basic import Int32StringReceiver
+from twisted.internet.defer import (maybeDeferred, inlineCallbacks,
+                                    returnValue, Deferred)
 
 
 # just a set of constants which determine the state of the connection
 CONNECTED = 0
 DONE = -1
 AUTHENTICATED = 1
-PLAYING
+PLAYING = 2
 
 
 
@@ -42,6 +43,8 @@ class GomokuProtocol(Int32StringReceiver):
         self.user = None
         self.state = CONNECTED
         self.color = None
+        self.opponent = None
+        self.colors = None
         self.dispatch = {utils.AUTH: self.auth,
                          utils.REGISTER: self.register,
                          utils.OPPONENTS: self.opponents,
@@ -49,27 +52,59 @@ class GomokuProtocol(Int32StringReceiver):
 
 
     def send(self, response):
-        response = simplejson.dumps(response)
+        response = utils.dumps(response)
         self.sendString(response)
 
 
     def stringReceived(self, string):
-        request = simplejson.loads(string)
+        request = utils.loads(string)
         try:
             self.dispatch[request['action']](request)
         except KeyError:
             self.send({'action': utils.NOTIMPLEMENTED})
 
 
+    @inlineCallbacks
     def play(self, request):
-        """Connect the player and his opponent (human or AI)"""
+        """Connect the player and his opponent (human or AI)
+
+        Currently supports only AI."""
         if random.random() >= 0.5:
             self.color = 'black'
+            self.opponent = utils.AIUser(request['opponent'], 'white')
+            self.colors = {'black': self, 'white': self.opponent}
         else:
             self.color = 'white'
+            self.opponent = utils.AIUser(request['opponent'], 'black')
+            self.colors = {'black': self.opponent, 'white': self}
         field = utils.field()
-        self.opponent = utils.AIUser(request['name'])
+        current = 'black'
+        while not utils.done(field):
+            player = self.colors[current]
+            field = yield maybeDeferred(player.move, field)
+            current = {'black': 'white', 'white': 'black'}[current]
 
+
+    def move(self, field):
+        self.deferred = Deferred()
+        self.send({'action': utils.moves.MOVE,
+                   'field': field})
+        return self.deferred
+
+
+    def on_move(self, request):
+        position = request['position']
+        field = request['field']
+        try:
+            if field[position] is None:
+                field[position] = self.color
+                self.deferred.callback(field)
+            else:
+                self.send({'action': utils.moves.OVERWRITE,
+                           'field': field})
+        except KeyError:
+            self.send({'action': utils.moves.OUTOFBOARD,
+                       'field': field})
 
 
     def auth(self, request):

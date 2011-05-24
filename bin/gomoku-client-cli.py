@@ -107,12 +107,12 @@ class GomokuClientProtocol(Int32StringReceiver):
 
 
     def stringReceived(self, response):
-        response = simplejson.loads(response)
+        response = utils.loads(response)
         self.dispatch[response['action']](response)
 
 
     def send(self, request):
-        request = simplejson.dumps(request)
+        request = utils.dumps(request)
         self.sendString(request)
 
 
