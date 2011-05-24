@@ -14,6 +14,7 @@ It should serve several purposes:
 
 import argparse
 import simplejson
+import random
 from gomoku import utils
 import anydbm
 from twisted.internet import reactor
@@ -25,6 +26,7 @@ from twisted.protocols.basic import Int32StringReceiver
 CONNECTED = 0
 DONE = -1
 AUTHENTICATED = 1
+PLAYING
 
 
 
@@ -39,8 +41,11 @@ class GomokuProtocol(Int32StringReceiver):
     def __init__(self):
         self.user = None
         self.state = CONNECTED
+        self.color = None
         self.dispatch = {utils.AUTH: self.auth,
-                         utils.REGISTER: self.register}
+                         utils.REGISTER: self.register,
+                         utils.OPPONENTS: self.opponents,
+                         utils.PLAY: self.play}
 
 
     def send(self, response):
@@ -54,6 +59,17 @@ class GomokuProtocol(Int32StringReceiver):
             self.dispatch[request['action']](request)
         except KeyError:
             self.send({'action': utils.NOTIMPLEMENTED})
+
+
+    def play(self, request):
+        """Connect the player and his opponent (human or AI)"""
+        if random.random() >= 0.5:
+            self.color = 'black'
+        else:
+            self.color = 'white'
+        field = utils.field()
+        self.opponent = utils.AIUser(request['name'])
+
 
 
     def auth(self, request):
@@ -79,6 +95,14 @@ class GomokuProtocol(Int32StringReceiver):
         except KeyError:
             self.send({'action': utils.AUTH_ERR_NOTFOUND})
 
+
+    def opponents(self, request):
+        """Propose opponents for the player"""
+        self.send({'action': utils.OPPONENTS,
+                   'opponents': [{'name': 'Garry',
+                                  'type': 'AI'},
+                                 {'name': 'Bobby',
+                                  'type': 'AI'}]})
 
 
 class GomokuFactory(Factory):

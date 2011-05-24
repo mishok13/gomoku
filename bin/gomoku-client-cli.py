@@ -2,7 +2,7 @@
 
 
 """
-Simple command-line client
+Simple command-line Gomoku client
 """
 
 
@@ -34,7 +34,8 @@ class GomokuClientProtocol(Int32StringReceiver):
         self.dispatch = {utils.AUTH_OK: self.authenticated,
                          utils.REG_OK: self.registered,
                          utils.AUTH_ERR_PASSWORD: self.wrongpass,
-                         utils.AUTH_ERR_NOTFOUND: self.notauser}
+                         utils.AUTH_ERR_NOTFOUND: self.notauser,
+                         utils.OPPONENTS: self.opponents}
 
 
     def connectionMade(self):
@@ -43,18 +44,39 @@ class GomokuClientProtocol(Int32StringReceiver):
 
 
     def authenticated(self, response):
+        """Callback issued when user has been authenticated"""
         self.factory.state = AUTHENTICATED
-        self.send({'action': utils.FIELD})
+        self.send({'action': utils.OPPONENTS})
 
 
     def registered(self, response):
+        """Callback issued when user has been registered"""
         print('You have been registered!')
-        self.factory.state = AUTHENTICATED
+        self.authenticated(response)
 
 
     def wrongpass(self, response):
         print('Password mismatch!')
         self.auth()
+
+
+    def opponents(self, response):
+        print('There are following users:')
+        opponents = list(enumerate(response['opponents']))
+        for index, opponent in opponents:
+            print('{}) {} ({})'.format(index,
+                                       opponent['name'],
+                                       opponent['type']))
+        while True:
+            selection = raw_input('Select opponent: ')
+            if selection:
+                selection = int(selection)
+                if 0 <= selection < len(opponents):
+                    break
+        opponent = opponents[selection][1]
+        self.send({'action': utils.PLAY,
+                   'opponent': opponent['name'],
+                   'type': opponent['type']})
 
 
     def notauser(self, response):
