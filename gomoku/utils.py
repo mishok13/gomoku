@@ -8,24 +8,28 @@ from gomoku import errors
 
 
 
-# Actions clients can send
-AUTH = 0
-REGISTER = 1
-MOVE = 2
-BADREQUEST = 3
+class Constants(object): pass
 
-# Actions server can send
-AUTH_OK = 4
-AUTH_ERR_NOTFOUND = 5
-AUTH_ERR_PASSWORD = 6
-REG_OK = 7
-NOTIMPLEMENTED = 8
-FIELD = 9
-OPPONENTS = 10
-PLAY = 11
 
-BLACK = 'black'
-WHITE = 'white'
+#pylint: disable-msg=w0201
+general = Constants()
+general.NOTIMPLEMENTED = 0
+general.BADREQUEST = 1
+auth = Constants()
+auth.AUTH = 100
+auth.REGISTER = 101
+auth.USERNOTFOUND = 102
+auth.BADPASSWORD = 103
+play = Constants()
+play.INIT = 400
+play.MOVE = 401
+play.OPPONENTS = 402
+play.OVERWRITE = 403
+play.OUTOFBOARD = 404
+colors = Constants()
+colors.BLACK = 500
+colors.WHITE = 501
+#pylint: enable-msg=w0201
 
 
 # Both these functions have been put here to make future changes
@@ -108,15 +112,3 @@ class AIUser(object):
 def done(field):
     """Check if the field has winning/draw situation"""
     return all(field.itervalues())
-
-
-
-class Constants(object):
-
-
-    def __init__(self, start, names):
-        for index, name in enumerate(names, start):
-            setattr(self, name, index)
-
-
-moves = Constants(400, ['MOVE', 'OVERWRITE', 'OUTOFBOARD'])

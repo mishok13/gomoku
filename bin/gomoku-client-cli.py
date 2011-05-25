@@ -31,12 +31,14 @@ class GomokuClientProtocol(Int32StringReceiver):
 
 
     def __init__(self):
-        self.dispatch = {utils.AUTH_OK: self.authenticated,
-                         utils.REG_OK: self.registered,
-                         utils.AUTH_ERR_PASSWORD: self.wrongpass,
-                         utils.AUTH_ERR_NOTFOUND: self.notauser,
-                         utils.OPPONENTS: self.opponents,
-                         utils.moves.MOVE: self.on_move}
+        self.dispatch = {utils.auth.AUTH: self.authenticated,
+                         utils.auth.REGISTER: self.registered,
+                         utils.auth.BADPASSWORD: self.wrongpass,
+                         utils.auth.USERNOTFOUND: self.notauser,
+                         utils.play.OPPONENTS: self.opponents,
+                         utils.play.MOVE: self.on_move,
+                         utils.play.OVERWRITE: self.on_move_overwrite,
+                         utils.play.OUTOFBOARD: self.on_move_outofboard}
 
 
     def connectionMade(self):
@@ -47,7 +49,17 @@ class GomokuClientProtocol(Int32StringReceiver):
     def authenticated(self, response):
         """Callback issued when user has been authenticated"""
         self.factory.state = AUTHENTICATED
-        self.send({'action': utils.OPPONENTS})
+        self.send({'action': utils.play.OPPONENTS})
+
+
+    def on_move_overwrite(self, request):
+        print('You may not overwrite existing moves')
+        self.on_move(request)
+
+
+    def on_move_outofboard(self, request):
+        print('Pieces should be placed on the board')
+        self.on_move(request)
 
 
     def on_move(self, request):
@@ -57,12 +69,12 @@ class GomokuClientProtocol(Int32StringReceiver):
         while True:
             move = raw_input("Print your move: ")
             if move:
-                x, y = ord(move[0]) - 65, int(move[1])
+                x, y = ord(move[0]) - 65, int(move[1:])
                 break
-        self.send({'action': utils.moves.MOVE,
+        self.send({'action': utils.play.MOVE,
                    'color': color,
                    'field': field,
-                   'coord': (x, y)})
+                   'move': (x, y)})
 
 
 
@@ -72,7 +84,8 @@ class GomokuClientProtocol(Int32StringReceiver):
         for x in xrange(15):
             print('{:>3} '.format(chr(x + 65)), end='')
             for y in xrange(15):
-                piece = {'black': ' B ', 'white': ' W '}.get(field[(x, y)], u' · ')
+                piece = {utils.colors.BLACK: ' B ',
+                         utils.colors.WHITE: ' W '}.get(field[(x, y)], u' · ')
                 print(piece, end='')
             print()
 
@@ -103,7 +116,7 @@ class GomokuClientProtocol(Int32StringReceiver):
                 if 0 <= selection < len(opponents):
                     break
         opponent = opponents[selection][1]
-        self.send({'action': utils.PLAY,
+        self.send({'action': utils.play.INIT,
                    'opponent': opponent['name'],
                    'type': opponent['type']})
 
@@ -115,7 +128,7 @@ class GomokuClientProtocol(Int32StringReceiver):
             if password == self.password('Re-type your password: '):
                 break
             print('Oops, the two password have to match. Try again')
-        self.send({'action': utils.REGISTER,
+        self.send({'action': utils.auth.REGISTER,
                    'user': self.factory.user,
                    'password': password})
 
@@ -130,7 +143,7 @@ class GomokuClientProtocol(Int32StringReceiver):
 
     def auth(self):
         password = self.password()
-        self.send({'action': utils.AUTH,
+        self.send({'action': utils.auth.AUTH,
                    'user': self.factory.user,
                    'password': password})
 

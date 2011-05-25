@@ -46,11 +46,11 @@ class GomokuProtocol(Int32StringReceiver):
         self.opponent = None
         self.colors = None
         self.deferred = None
-        self.dispatch = {utils.AUTH: self.auth,
-                         utils.REGISTER: self.register,
-                         utils.OPPONENTS: self.opponents,
-                         utils.PLAY: self.play,
-                         utils.moves.MOVE: self.on_move}
+        self.dispatch = {utils.auth.AUTH: self.auth,
+                         utils.auth.REGISTER: self.register,
+                         utils.play.OPPONENTS: self.opponents,
+                         utils.play.INIT: self.play,
+                         utils.play.MOVE: self.on_move}
 
 
     def send(self, response):
@@ -63,7 +63,7 @@ class GomokuProtocol(Int32StringReceiver):
         try:
             self.dispatch[request['action']](request)
         except KeyError:
-            self.send({'action': utils.NOTIMPLEMENTED})
+            self.send({'action': utils.general.NOTIMPLEMENTED})
 
 
     @inlineCallbacks
@@ -72,58 +72,61 @@ class GomokuProtocol(Int32StringReceiver):
 
         Currently supports only AI."""
         if random.random() >= 1.0:
-            self.color = 'black'
-            self.opponent = utils.AIUser(request['opponent'], 'white')
-            self.colors = {'black': self, 'white': self.opponent}
+            self.color = utils.colors.BLACK
+            self.opponent = utils.AIUser(request['opponent'], utils.colors.WHITE)
+            self.colors = {utils.colors.BLACK: self, utils.colors.WHITE: self.opponent}
         else:
-            self.color = 'white'
-            self.opponent = utils.AIUser(request['opponent'], 'black')
-            self.colors = {'black': self.opponent, 'white': self}
+            self.color = utils.colors.WHITE
+            self.opponent = utils.AIUser(request['opponent'], utils.colors.BLACK)
+            self.colors = {utils.colors.BLACK: self.opponent, utils.colors.WHITE: self}
         self.state = PLAYING
         field = utils.field()
-        current = 'black'
+        current = utils.colors.BLACK
         while not utils.done(field):
             player = self.colors[current]
             field = yield maybeDeferred(player.move, field)
-            current = {'black': 'white', 'white': 'black'}[current]
+            current = {utils.colors.BLACK: utils.colors.WHITE,
+                       utils.colors.WHITE: utils.colors.BLACK}[current]
         print('done?')
 
 
     def move(self, field):
         self.deferred = Deferred()
-        self.send({'action': utils.moves.MOVE,
+        self.send({'action': utils.play.MOVE,
                    'field': field,
                    'color': self.color})
         return self.deferred
 
 
     def on_move(self, response):
-        position = response['position']
         field = response['field']
         color = response['color']
+        move = response['move']
         try:
-            if field[position] is None:
-                field[position] = self.color
+            if field[move] is None:
+                field[move] = self.color
                 # Do something with callback, otherwise we might get double
                 # callback issued, not good at all
                 self.deferred.callback(field)
             else:
-                self.send({'action': utils.moves.OVERWRITE,
-                           'field': field})
+                self.send({'action': utils.play.OVERWRITE,
+                           'field': field,
+                           'color': self.color})
         except KeyError:
-            self.send({'action': utils.moves.OUTOFBOARD,
-                       'field': field})
+            self.send({'action': utils.play.OUTOFBOARD,
+                       'field': field,
+                       'color': self.color})
 
 
     def auth(self, request):
         try:
             if self.factory.db[str(request['user'])] == str(request['password']):
                 self.state = AUTHENTICATED
-                self.send({'action': utils.AUTH_OK})
+                self.send({'action': utils.auth.AUTH})
             else:
-                self.send({'action': utils.AUTH_ERR_PASSWORD})
+                self.send({'action': utils.auth.BADPASSWORD})
         except KeyError:
-            self.send({'action': utils.AUTH_ERR_NOTFOUND})
+            self.send({'action': utils.auth.NOTFOUND})
 
 
     def register(self, request):
@@ -131,17 +134,17 @@ class GomokuProtocol(Int32StringReceiver):
             if str(request['user']) in self.factory.db:
                 # This is bad, we shouldn't allow someone overwriting already
                 # existing users
-                self.send({'action': utils.BADREQUEST})
+                self.send({'action': utils.general.BADREQUEST})
             else:
                 self.factory.db[str(request['user'])] = str(request['password'])
-                self.send({'action': utils.REG_OK})
+                self.send({'action': utils.auth.REGISTER})
         except KeyError:
-            self.send({'action': utils.AUTH_ERR_NOTFOUND})
+            self.send({'action': utils.general.BADREQUEST})
 
 
     def opponents(self, request):
         """Propose opponents for the player"""
-        self.send({'action': utils.OPPONENTS,
+        self.send({'action': utils.play.OPPONENTS,
                    'opponents': [{'name': 'Garry',
                                   'type': 'AI'},
                                  {'name': 'Bobby',
