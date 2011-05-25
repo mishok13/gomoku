@@ -24,6 +24,9 @@ FIELD = 9
 OPPONENTS = 10
 PLAY = 11
 
+BLACK = 'black'
+WHITE = 'white'
+
 
 # Both these functions have been put here to make future changes
 # to different serialization methods easier
@@ -104,49 +107,7 @@ class AIUser(object):
 
 def done(field):
     """Check if the field has winning/draw situation"""
-    # TODO: MY EYES ARE BURNING
-    # It's like O(2**n) best case
-    # Better approach would probably be checking every
-    # line, row and diagonal, but that would something
-    # similar O(n**2) best case, still not good enough
-    # Another, way better approach, would be to calc
-    # win situation after each field update
-    for coord, value in field.iteritems():
-        if value is not None:
-            # walk right
-            if all(field.get((x, coord[1])) == value
-                   for x in xrange(coord[0] + 1, coord[0] + 5)):
-                return True
-            # walk left
-            if all(field.get((x, coord[1])) == value
-                   for x in xrange(coord[0] - 4, coord[0], -1)):
-                return True
-            # walk up (or down?)
-            if all(field.get((coord[0], y)) == value
-                   for y in xrange(coord[1] + 1, coord[1] + 5)):
-                return True
-            # walk down (or up?)
-            if all(field.get((coord[0], y)) == value
-                   for y in xrange(coord[1] - 4, coord[1], -1)):
-                return True
-            # and diagonally :)
-            if all(field.get((x, y)) == value
-                   for x in xrange(coord[0] + 1, coord[0] + 5)
-                   for y in xrange(coord[1] + 1, coord[1] + 5)):
-                return True
-            if all(field.get((x, y)) == value
-                   for x in xrange(coord[0] - 4, coord[0], -1)
-                   for y in xrange(coord[1] + 1, coord[1] + 5)):
-                return True
-            if all(field.get((x, y)) == value
-                   for x in xrange(coord[0] - 4, coord[0], -1)
-                   for y in xrange(coord[1] - 4, coord[1], -1)):
-                return True
-            if all(field.get((x, y)) == value
-                   for x in xrange(coord[0] + 1, coord[0] + 5)
-                   for y in xrange(coord[1] - 4, coord[1], -1)):
-                return True
-    return False
+    return all(field.itervalues())
 
 
 

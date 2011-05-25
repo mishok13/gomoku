@@ -53,12 +53,29 @@ class GomokuClientProtocol(Int32StringReceiver):
     def on_move(self, request):
         field = request['field']
         color = request['color']
-        print(field)
+        self.print_field(field)
+        while True:
+            move = raw_input("Print your move: ")
+            if move:
+                x, y = ord(move[0]) - 65, int(move[1])
+                break
+        self.send({'action': utils.moves.MOVE,
+                   'color': color,
+                   'field': field,
+                   'coord': (x, y)})
+
+
+
+    def print_field(self, field):
+        # TODO: Probably move it to function
+        print(' ' * 3, ''.join(map('{:>3}'.format, xrange(15))), sep='')
         for x in xrange(15):
+            print('{:>3} '.format(chr(x + 65)), end='')
             for y in xrange(15):
-                char = {'black': 'B', 'white': 'W'}.get(field[(x, y)], u'·')
-                print(char, '', end='')
+                piece = {'black': ' B ', 'white': ' W '}.get(field[(x, y)], u' · ')
+                print(piece, end='')
             print()
+
 
 
     def registered(self, response):

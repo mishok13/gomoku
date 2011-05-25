@@ -49,7 +49,8 @@ class GomokuProtocol(Int32StringReceiver):
         self.dispatch = {utils.AUTH: self.auth,
                          utils.REGISTER: self.register,
                          utils.OPPONENTS: self.opponents,
-                         utils.PLAY: self.play}
+                         utils.PLAY: self.play,
+                         utils.moves.MOVE: self.on_move}
 
 
     def send(self, response):
@@ -99,6 +100,7 @@ class GomokuProtocol(Int32StringReceiver):
     def on_move(self, response):
         position = response['position']
         field = response['field']
+        color = response['color']
         try:
             if field[position] is None:
                 field[position] = self.color
