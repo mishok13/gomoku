@@ -28,6 +28,7 @@ CONNECTED = 0
 DONE = -1
 AUTHENTICATED = 1
 PLAYING = 2
+READY = 3
 
 
 
@@ -71,50 +72,66 @@ class GomokuProtocol(Int32StringReceiver):
         """Connect the player and his opponent (human or AI)
 
         Currently supports only AI."""
-        if random.random() >= 1.0:
-            self.color = utils.colors.BLACK
-            self.opponent = utils.AIUser(request['opponent'], utils.colors.WHITE)
-            self.colors = {utils.colors.BLACK: self, utils.colors.WHITE: self.opponent}
-        else:
-            self.color = utils.colors.WHITE
-            self.opponent = utils.AIUser(request['opponent'], utils.colors.BLACK)
-            self.colors = {utils.colors.BLACK: self.opponent, utils.colors.WHITE: self}
+        colors = [utils.colors.BLACK, utils.colors.WHITE]
+        if random.random() >= 0.5:
+            colors.reverse()
+        self.color = colors[0]
+        self.opponent = utils.AIUser(request['opponent'], colors[1])
+        self.players = {colors[0]: self, colors[1]: self.opponent}
         self.state = PLAYING
-        field = utils.field()
+        board = utils.Board(15, 15)
         current = utils.colors.BLACK
-        while not utils.done(field):
-            player = self.colors[current]
-            field = yield maybeDeferred(player.move, field)
-            current = {utils.colors.BLACK: utils.colors.WHITE,
-                       utils.colors.WHITE: utils.colors.BLACK}[current]
-        print('done?')
+        while True:
+            player = self.players[current]
+            board = yield maybeDeferred(player.move, board)
+            result = board.done()
+            if result is None:
+                current = {utils.colors.BLACK: utils.colors.WHITE,
+                           utils.colors.WHITE: utils.colors.BLACK}[current]
+            else:
+                if result == utils.colors.NONE:
+                    for player in self.players.itervalues():
+                        player.done(board, utils.results.DRAW)
+                else:
+                    # TODO: This seems broken, should be a better way of
+                    # doing this
+                    self.players.pop(result).done(board, utils.results.VICTORY)
+                    self.players.itervalues().next().done(board, utils.results.DEFEAT)
+                break
+        self.state = READY
 
 
-    def move(self, field):
+    def done(self, board, result):
+        self.send({'action': utils.play.DONE,
+                   'board': board,
+                   'result': result})
+
+
+    def move(self, board):
         self.deferred = Deferred()
         self.send({'action': utils.play.MOVE,
-                   'field': field,
+                   'board': board,
                    'color': self.color})
         return self.deferred
 
 
     def on_move(self, response):
-        field = response['field']
+        board = response['board']
         color = response['color']
         move = response['move']
         try:
-            if field[move] is None:
-                field[move] = self.color
+            if board[move] is None:
+                board[move] = self.color
                 # Do something with callback, otherwise we might get double
                 # callback issued, not good at all
-                self.deferred.callback(field)
+                self.deferred.callback(board)
             else:
                 self.send({'action': utils.play.OVERWRITE,
-                           'field': field,
+                           'board': board,
                            'color': self.color})
         except KeyError:
             self.send({'action': utils.play.OUTOFBOARD,
-                       'field': field,
+                       'board': board,
                        'color': self.color})
 
 

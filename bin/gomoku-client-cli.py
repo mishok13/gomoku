@@ -31,14 +31,15 @@ class GomokuClientProtocol(Int32StringReceiver):
 
 
     def __init__(self):
-        self.dispatch = {utils.auth.AUTH: self.authenticated,
-                         utils.auth.REGISTER: self.registered,
-                         utils.auth.BADPASSWORD: self.wrongpass,
-                         utils.auth.USERNOTFOUND: self.notauser,
+        self.dispatch = {utils.auth.AUTH: self.on_auth,
+                         utils.auth.REGISTER: self.on_register,
+                         utils.auth.BADPASSWORD: self.err_wrongpass,
+                         utils.auth.USERNOTFOUND: self.err_notauser,
                          utils.play.OPPONENTS: self.opponents,
                          utils.play.MOVE: self.on_move,
-                         utils.play.OVERWRITE: self.on_move_overwrite,
-                         utils.play.OUTOFBOARD: self.on_move_outofboard}
+                         utils.play.OVERWRITE: self.err_overwrite,
+                         utils.play.OUTOFBOARD: self.err_outofboard,
+                         utils.play.DONE: self.on_game_done}
 
 
     def connectionMade(self):
@@ -46,26 +47,26 @@ class GomokuClientProtocol(Int32StringReceiver):
             self.auth()
 
 
-    def authenticated(self, response):
+    def on_auth(self, response):
         """Callback issued when user has been authenticated"""
         self.factory.state = AUTHENTICATED
         self.send({'action': utils.play.OPPONENTS})
 
 
-    def on_move_overwrite(self, request):
+    def err_overwrite(self, request):
         print('You may not overwrite existing moves')
         self.on_move(request)
 
 
-    def on_move_outofboard(self, request):
+    def err_outofboard(self, request):
         print('Pieces should be placed on the board')
         self.on_move(request)
 
 
     def on_move(self, request):
-        field = request['field']
+        board = request['board']
         color = request['color']
-        self.print_field(field)
+        board.show()
         while True:
             move = raw_input("Print your move: ")
             if move:
@@ -73,31 +74,27 @@ class GomokuClientProtocol(Int32StringReceiver):
                 break
         self.send({'action': utils.play.MOVE,
                    'color': color,
-                   'field': field,
+                   'board': board,
                    'move': (x, y)})
 
 
 
-    def print_field(self, field):
-        # TODO: Probably move it to function
-        print(' ' * 3, ''.join(map('{:>3}'.format, xrange(15))), sep='')
-        for x in xrange(15):
-            print('{:>3} '.format(chr(x + 65)), end='')
-            for y in xrange(15):
-                piece = {utils.colors.BLACK: ' B ',
-                         utils.colors.WHITE: ' W '}.get(field[(x, y)], u' · ')
-                print(piece, end='')
-            print()
+    def on_game_done(self, request):
+        result = request['result']
+        print({utils.results.VICTORY: "Victory.",
+               utils.results.DRAW: "Draw",
+               utils.results.DEFEAT: "Defeat"}[result])
 
 
 
-    def registered(self, response):
+
+    def on_register(self, response):
         """Callback issued when user has been registered"""
         print('You have been registered!')
-        self.authenticated(response)
+        self.on_auth(response)
 
 
-    def wrongpass(self, response):
+    def err_wrongpass(self, response):
         print('Password mismatch!')
         self.auth()
 
@@ -121,7 +118,7 @@ class GomokuClientProtocol(Int32StringReceiver):
                    'type': opponent['type']})
 
 
-    def notauser(self, response):
+    def err_notauser(self, response):
         print('There is no such user. Registration required')
         while True:
             password = self.password()

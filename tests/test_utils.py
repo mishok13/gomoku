@@ -3,6 +3,7 @@
 
 import nose
 from gomoku import utils
+from itertools import product
 
 
 def test_elo():
@@ -18,24 +19,26 @@ def test_elo():
 
 
 def test_done():
-    field = utils.field()
-    assert utils.done(field) != True
-    field[(0, 0)] = utils.colors.BLACK
-    assert utils.done(field) != True
-    assert utils.done(dict.fromkeys(field.iterkeys(), utils.colors.BLACK)) == True
-    field = utils.field()
+    board = utils.Board(15, 15)
+    assert board.done() is None
+    board[(0, 0)] = utils.colors.BLACK
+    assert board.done() is None
+    board = utils.Board(15, 15)
+    board.board = dict.fromkeys(product(range(15), range(15)), utils.colors.BLACK)
+    assert board.done() == utils.colors.BLACK
+    board = utils.Board(15, 15)
     for coord in [(x, 0) for x in xrange(5)]:
-        field[coord] = utils.colors.BLACK
-    assert utils.done(field) == True
-    field = utils.field()
+        board[coord] = utils.colors.BLACK
+    assert board.done() == utils.colors.BLACK
+    board = utils.Board(15, 15)
     for coord in [(0, y) for y in xrange(5)]:
-        field[coord] = utils.colors.BLACK
-    assert utils.done(field) == True
-    field = utils.field()
+        board[coord] = utils.colors.BLACK
+    assert board.done() == utils.colors.BLACK
+    board = utils.Board(15, 15)
     for coord in [(x, x) for x in xrange(5)]:
-        field[coord] = utils.colors.BLACK
-    assert utils.done(field) == True
-    field = utils.field()
+        board[coord] = utils.colors.BLACK
+    assert board.done() == utils.colors.BLACK
+    board = utils.Board(15, 15)
     for coord in [(x, y) for x, y in zip(xrange(5), xrange(4, -1, -1))]:
-        field[coord] = utils.colors.BLACK
-    assert utils.done(field) == True
+        board[coord] = utils.colors.BLACK
+    assert board.done() == utils.colors.BLACK
