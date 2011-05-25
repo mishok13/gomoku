@@ -14,7 +14,7 @@ def test_elo():
                              (1586, 1.0),
                              (1720, 0.0)]:
         rating = utils.elo(rating, opponent, result)[0]
-        print rating
+    assert round(rating) == 1603
 
 
 
