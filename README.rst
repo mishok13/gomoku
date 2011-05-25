@@ -46,6 +46,7 @@ In no particular order:
 * Alternative rating systems
 * Full test coverage
 * Ability to save and restore games (especially with AI)
+* Ability to view any game ever played
 
 Why are you writing this?
 -------------------------
