@@ -78,14 +78,11 @@ class GomokuClientProtocol(Int32StringReceiver):
                    'move': (x, y)})
 
 
-
     def on_game_done(self, request):
         result = request['result']
         print({utils.results.VICTORY: "Victory.",
                utils.results.DRAW: "Draw",
                utils.results.DEFEAT: "Defeat"}[result])
-
-
 
 
     def on_register(self, response):
