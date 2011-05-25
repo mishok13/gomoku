@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import with_statement
+from __future__ import with_statement, print_function
 
 """
 Server that runs gomoku game.
@@ -45,6 +45,7 @@ class GomokuProtocol(Int32StringReceiver):
         self.color = None
         self.opponent = None
         self.colors = None
+        self.deferred = None
         self.dispatch = {utils.AUTH: self.auth,
                          utils.REGISTER: self.register,
                          utils.OPPONENTS: self.opponents,
@@ -69,7 +70,7 @@ class GomokuProtocol(Int32StringReceiver):
         """Connect the player and his opponent (human or AI)
 
         Currently supports only AI."""
-        if random.random() >= 0.5:
+        if random.random() >= 1.0:
             self.color = 'black'
             self.opponent = utils.AIUser(request['opponent'], 'white')
             self.colors = {'black': self, 'white': self.opponent}
@@ -77,27 +78,32 @@ class GomokuProtocol(Int32StringReceiver):
             self.color = 'white'
             self.opponent = utils.AIUser(request['opponent'], 'black')
             self.colors = {'black': self.opponent, 'white': self}
+        self.state = PLAYING
         field = utils.field()
         current = 'black'
         while not utils.done(field):
             player = self.colors[current]
             field = yield maybeDeferred(player.move, field)
             current = {'black': 'white', 'white': 'black'}[current]
+        print('done?')
 
 
     def move(self, field):
         self.deferred = Deferred()
         self.send({'action': utils.moves.MOVE,
-                   'field': field})
+                   'field': field,
+                   'color': self.color})
         return self.deferred
 
 
-    def on_move(self, request):
-        position = request['position']
-        field = request['field']
+    def on_move(self, response):
+        position = response['position']
+        field = response['field']
         try:
             if field[position] is None:
                 field[position] = self.color
+                # Do something with callback, otherwise we might get double
+                # callback issued, not good at all
                 self.deferred.callback(field)
             else:
                 self.send({'action': utils.moves.OVERWRITE,

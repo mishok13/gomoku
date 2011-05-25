@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# -*- coding: utf-8 -*-
 
 """
 Simple command-line Gomoku client
@@ -35,7 +35,8 @@ class GomokuClientProtocol(Int32StringReceiver):
                          utils.REG_OK: self.registered,
                          utils.AUTH_ERR_PASSWORD: self.wrongpass,
                          utils.AUTH_ERR_NOTFOUND: self.notauser,
-                         utils.OPPONENTS: self.opponents}
+                         utils.OPPONENTS: self.opponents,
+                         utils.moves.MOVE: self.on_move}
 
 
     def connectionMade(self):
@@ -47,6 +48,17 @@ class GomokuClientProtocol(Int32StringReceiver):
         """Callback issued when user has been authenticated"""
         self.factory.state = AUTHENTICATED
         self.send({'action': utils.OPPONENTS})
+
+
+    def on_move(self, request):
+        field = request['field']
+        color = request['color']
+        print(field)
+        for x in xrange(15):
+            for y in xrange(15):
+                char = {'black': 'B', 'white': 'W'}.get(field[(x, y)], u'·')
+                print(char, '', end='')
+            print()
 
 
     def registered(self, response):

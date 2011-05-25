@@ -4,6 +4,7 @@
 from itertools import product
 import cPickle as pickle
 import random
+from gomoku import errors
 
 
 
@@ -86,15 +87,23 @@ class AIUser(object):
     def move(self, field):
         """Make stupid move by randomly choosing from unoccupied neighbours.
 
-        This would even work for empty fields."""
+        This would even work for empty fields.
+        """
         neighbours = list(set(empty_neighbours(field)))
-        field[random.choice(neighbours)] = self.color
+        if neighbours:
+            field[random.choice(neighbours)] = self.color
+        else:
+            if any(field[coord] for coord in neighbours):
+                # If we have non-empty celss, then we're probably out of possible moves
+                raise errors.NoMovePossible
+            else:
+                field[random.choice(field.keys())] = self.color
         return field
 
 
 
 def done(field):
-    """Check if the field has winning situation"""
+    """Check if the field has winning/draw situation"""
     # TODO: MY EYES ARE BURNING
     # It's like O(2**n) best case
     # Better approach would probably be checking every
@@ -149,6 +158,4 @@ class Constants(object):
             setattr(self, name, index)
 
 
-
 moves = Constants(400, ['MOVE', 'OVERWRITE', 'OUTOFBOARD'])
-print moves.MOVE, moves.OVERWRITE, moves.OUTOFBOARD
