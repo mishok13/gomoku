@@ -109,6 +109,22 @@ class AIUser(object):
 
 
 
-def done(field):
+def done(field, length=5):
     """Check if the field has winning/draw situation"""
+    for coord, color in field.iteritems():
+        if color is None:
+            continue
+        if all(field.get((coord[0], y)) == color
+               for y in xrange(coord[1], coord[1] + length)):
+            return True
+        if all(field.get((x, coord[1])) == color
+               for x in xrange(coord[0], coord[0] + length)):
+            return True
+        if all(field.get((x, x)) == color
+               for x in xrange(coord[0], coord[0] + length)):
+            return True
+        if all(field.get((x, y)) == color
+               for x, y in zip(xrange(coord[0], coord[0] + length),
+                               xrange(coord[1] + length, coord[1], -1))):
+            return True
     return all(field.itervalues())
