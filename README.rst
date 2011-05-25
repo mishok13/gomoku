@@ -33,12 +33,12 @@ What's planned?
 ---------------
 
 In no particular order:
+
 * Human to human games
 * Improved command line interface
 * Stonger AIs
 * Renju rules
-* m,n,k general implementation (so you could play tic-tac-toe or
-  connect6 depending on your humor)
+* m,n,k general implementation (so you could play tic-tac-toe or connect6 depending on your humor)
 * HTTP API
 * Web interface
 * GTK/Qt interface
