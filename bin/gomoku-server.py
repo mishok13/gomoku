@@ -41,7 +41,7 @@ class GomokuProtocol(Int32StringReceiver):
 
 
     def __init__(self):
-        self.user = None
+        self.name = None
         self.state = CONNECTED
         self.color = None
         self.opponent = None
@@ -89,22 +89,42 @@ class GomokuProtocol(Int32StringReceiver):
                 current = {utils.colors.BLACK: utils.colors.WHITE,
                            utils.colors.WHITE: utils.colors.BLACK}[current]
             else:
+                self.update_ratings(result)
                 if result == utils.colors.NONE:
                     for player in self.players.itervalues():
                         player.done(board, utils.results.DRAW)
                 else:
                     # TODO: This seems broken, should be a better way of
                     # doing this
+                    # TODO: This also should somehow merge with update_ratings,
+                    # this seems to be in violation of DRY
                     self.players.pop(result).done(board, utils.results.VICTORY)
                     self.players.itervalues().next().done(board, utils.results.DEFEAT)
                 break
+        # Cleaning up
+        self.opponent = None
+        self.color = None
         self.state = READY
 
 
+    def update_ratings(self, color):
+        points = {self.color: 1.0, self.opponent.color: 0.0}.get(color, 0.5)
+        mine = utils.loads(self.factory.db[self.name])
+        others = utils.loads(self.factory.db[self.opponent.name])
+        mine['rating'], others['rating'] = utils.elo(mine['rating'],
+                                                     others['rating'],
+                                                     points)
+        self.factory.db[self.name] = utils.dumps(mine)
+        self.factory.db[self.opponent.name] = utils.dumps(others)
+
+
     def done(self, board, result):
+        """Called when the game has ended"""
+        rating = int(utils.loads(self.factory.db[self.name])['rating'])
         self.send({'action': utils.play.DONE,
                    'board': board,
-                   'result': result})
+                   'result': result,
+                   'rating': rating})
 
 
     def move(self, board):
@@ -142,6 +162,7 @@ class GomokuProtocol(Int32StringReceiver):
             # TODO: maybe add check for human players trying to auth as bots?
             if desc['password'] == str(request['password']):
                 self.state = AUTHENTICATED
+                self.name = user
                 self.send({'action': utils.auth.AUTH,
                            'rating': int(round(desc['rating']))})
             else:
@@ -163,6 +184,8 @@ class GomokuProtocol(Int32StringReceiver):
                     {'password': request['password'],
                      'type': 'human',
                      'rating': 1500})
+                self.state = AUTHENTICATED
+                self.name = user
                 self.send({'action': utils.auth.REGISTER,
                            'rating': 1500})
         except KeyError:

@@ -81,9 +81,21 @@ class GomokuClientProtocol(Int32StringReceiver):
 
     def on_game_done(self, request):
         result = request['result']
-        print({utils.results.VICTORY: "Victory.",
-               utils.results.DRAW: "Draw",
-               utils.results.DEFEAT: "Defeat"}[result])
+        result = {utils.results.VICTORY: "won",
+                  utils.results.DRAW: "drawn",
+                  utils.results.DEFEAT: "lost"}[result]
+        print('You {}. Your rating is now {}.'.format(result,
+                                                      request['rating']))
+        while True:
+            answer = raw_input("Do you want to play once more? [y/N] ")
+            if answer == 'y':
+                self.send({'action': utils.play.OPPONENTS})
+                break
+            elif answer == 'N':
+                reactor.stop()
+                break
+            else:
+                print('Please answer "y" or "N". ', end='')
 
 
     def on_register(self, response):
