@@ -143,17 +143,21 @@ class GomokuProtocol(Int32StringReceiver):
             else:
                 self.send({'action': utils.auth.BADPASSWORD})
         except KeyError:
-            self.send({'action': utils.auth.NOTFOUND})
+            self.send({'action': utils.auth.USERNOTFOUND})
 
 
     def register(self, request):
         try:
-            if str(request['user']) in self.factory.db:
+            user = str(request['user'])
+            if user in self.factory.db:
                 # This is bad, we shouldn't allow someone overwriting already
                 # existing users
                 self.send({'action': utils.general.BADREQUEST})
             else:
-                self.factory.db[str(request['user'])] = str(request['password'])
+                self.factory.db[user] = utils.dumps(
+                    {'password': request['password'],
+                     'type': 'human',
+                     'rating': 1500})
                 self.send({'action': utils.auth.REGISTER})
         except KeyError:
             self.send({'action': utils.general.BADREQUEST})
@@ -161,11 +165,15 @@ class GomokuProtocol(Int32StringReceiver):
 
     def opponents(self, request):
         """Propose opponents for the player"""
+        # We're currently using only AI bots, human players support will
+        # get added later
+        opponents = [{'name': name, 'rating': desc['rating'], 'type': 'AI'}
+                     for name, desc in
+                     ((name, utils.loads(desc)) for name, desc
+                      in self.factory.db.iteritems())
+                     if desc['type'] == 'AI']
         self.send({'action': utils.play.OPPONENTS,
-                   'opponents': [{'name': 'Garry',
-                                  'type': 'AI'},
-                                 {'name': 'Bobby',
-                                  'type': 'AI'}]})
+                   'opponents': opponents})
 
 
 class GomokuFactory(Factory):
@@ -182,6 +190,12 @@ class GomokuFactory(Factory):
 
     def startFactory(self):
         self.db = anydbm.open(self.dbpath, 'c')
+        # Initialize db with bot
+        if 'Herbie' not in self.db:
+            self.db['Herbie'] = utils.dumps({'password': None,
+                                             'type': 'AI',
+                                             'engine': 'random_ai',
+                                             'rating': 1500.0})
 
 
     def stopFactory(self):
