@@ -173,7 +173,7 @@ class GomokuProtocol(Int32StringReceiver):
         """Propose opponents for the player"""
         # We're currently using only AI bots, human players support will
         # get added later
-        opponents = [{'name': name, 'rating': desc['rating'], 'type': 'AI'}
+        opponents = [{'name': name, 'rating': int(desc['rating']), 'type': 'AI'}
                      for name, desc in
                      ((name, utils.loads(desc)) for name, desc
                       in self.factory.db.iteritems())

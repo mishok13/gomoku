@@ -104,7 +104,7 @@ class GomokuClientProtocol(Int32StringReceiver):
             print('{}) {} ({}) with rating of {}'.format(index,
                                                          opponent['name'],
                                                          opponent['type'],
-                                                         int(opponent['rating'])))
+                                                         opponent['rating']))
         while True:
             selection = raw_input('Select opponent: ')
             if selection:
