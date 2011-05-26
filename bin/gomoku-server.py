@@ -137,9 +137,13 @@ class GomokuProtocol(Int32StringReceiver):
 
     def auth(self, request):
         try:
-            if self.factory.db[str(request['user'])] == str(request['password']):
+            user = str(request['user'])
+            desc = utils.loads(self.factory.db[user])
+            # TODO: maybe add check for human players trying to auth as bots?
+            if desc['password'] == str(request['password']):
                 self.state = AUTHENTICATED
-                self.send({'action': utils.auth.AUTH})
+                self.send({'action': utils.auth.AUTH,
+                           'rating': int(round(desc['rating']))})
             else:
                 self.send({'action': utils.auth.BADPASSWORD})
         except KeyError:
@@ -154,11 +158,13 @@ class GomokuProtocol(Int32StringReceiver):
                 # existing users
                 self.send({'action': utils.general.BADREQUEST})
             else:
+                # TODO: Don't store plain-text passwords!
                 self.factory.db[user] = utils.dumps(
                     {'password': request['password'],
                      'type': 'human',
                      'rating': 1500})
-                self.send({'action': utils.auth.REGISTER})
+                self.send({'action': utils.auth.REGISTER,
+                           'rating': 1500})
         except KeyError:
             self.send({'action': utils.general.BADREQUEST})
 

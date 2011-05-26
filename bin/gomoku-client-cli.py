@@ -50,6 +50,7 @@ class GomokuClientProtocol(Int32StringReceiver):
     def on_auth(self, response):
         """Callback issued when user has been authenticated"""
         self.factory.state = AUTHENTICATED
+        print('Your rating is: {}'.format(response['rating']))
         self.send({'action': utils.play.OPPONENTS})
 
 
@@ -100,9 +101,10 @@ class GomokuClientProtocol(Int32StringReceiver):
         print('There are following users:')
         opponents = list(enumerate(response['opponents']))
         for index, opponent in opponents:
-            print('{}) {} ({})'.format(index,
-                                       opponent['name'],
-                                       opponent['type']))
+            print('{}) {} ({}) with rating of {}'.format(index,
+                                                         opponent['name'],
+                                                         opponent['type'],
+                                                         int(opponent['rating'])))
         while True:
             selection = raw_input('Select opponent: ')
             if selection:
