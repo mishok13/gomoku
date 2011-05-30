@@ -129,6 +129,7 @@ class Board(object):
         self.width = width
         self.height = height
         self.board = dict.fromkeys(product(xrange(width), xrange(height)))
+        self.actions = []
 
 
     def __getitem__(self, coord):
@@ -139,6 +140,7 @@ class Board(object):
         if color not in (colors.WHITE, colors.BLACK):
             raise ValueError('Only white and black pieces are allowed')
         self.board[coord] = color
+        self.actions.append(('MOVE', coord, color))
         #TODO: add aditional checks for Renju
 
 
@@ -160,6 +162,15 @@ class Board(object):
 
     def done(self, length=5):
         """Check if the field has winning/draw situation"""
+        # This should probably go into decorator, but having only
+        # one use-case, it would a bit strange
+        result = self._done(length)
+        if result is not None:
+            self.actions.append(('STOP', (-1, -1), result))
+        return result
+
+
+    def _done(self, length):
         # This algorithm runs in O(m * n * k) time, I wonder
         # if there's room for improvement
         for coord, color in self.iteritems():
