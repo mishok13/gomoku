@@ -44,6 +44,7 @@ class GomokuProtocol(Int32StringReceiver):
         self.name = None
         self.state = CONNECTED
         self.color = None
+        self.players = None
         self.opponent = None
         self.colors = None
         self.deferred = None

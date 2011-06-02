@@ -87,15 +87,16 @@ class GomokuClientProtocol(Int32StringReceiver):
         print('You {}. Your rating is now {}.'.format(result,
                                                       request['rating']))
         while True:
-            answer = raw_input("Do you want to play once more? [y/N] ")
-            if answer == 'y':
+            answer = raw_input("Do you want to play once more? [Y/n] ")
+            answer = answer.lower()
+            if answer in ('y', ''):
                 self.send({'action': utils.play.OPPONENTS})
                 break
-            elif answer == 'N':
+            elif answer == 'n':
                 reactor.stop()
                 break
             else:
-                print('Please answer "y" or "N". ', end='')
+                print('Please answer "y" or "n". ', end='')
 
 
     def on_register(self, response):

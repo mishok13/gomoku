@@ -3,10 +3,13 @@
 
 from __future__ import print_function
 
-from itertools import product
+from itertools import product, chain, takewhile
 import cPickle as pickle
 import random
 from gomoku import errors
+
+
+
 
 
 
@@ -122,14 +125,27 @@ class AIUser(object):
 
 
 
+def mapper(func, param):
+    """Produce infinite sequence of function applied to its result
+
+    mapper(f, p) -> p, f(p), f(f(p)), f(f(f(p))), ...
+    """
+    while True:
+        param = func(param)
+        yield param
+
+
+
 class Board(object):
 
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, length=5):
         self.width = width
         self.height = height
         self.board = dict.fromkeys(product(xrange(width), xrange(height)))
+        self.length = length
         self.actions = []
+        self._done = False
 
 
     def __getitem__(self, coord):
@@ -137,10 +153,23 @@ class Board(object):
 
 
     def __setitem__(self, coord, color):
+        def predicate(other):
+            return self.board.get(other, colors.NONE) == color
         if color not in (colors.WHITE, colors.BLACK):
             raise ValueError('Only white and black pieces are allowed')
+        if self.board[coord] is not None:
+            raise ValueError('Do not overwrite fields')
         self.board[coord] = color
         self.actions.append(('MOVE', coord, color))
+        for movers in [(up, down), (left, right),
+                       (upright, downleft), (upleft, downright)]:
+            if len(list(chain.from_iterable(takewhile(predicate, mapper(mover, coord))
+                                            for mover in movers))) == self.length - 1:
+                self._done = color
+                break
+        else:
+            if all(color in (colors.WHITE, colors.BLACK) for color in self.board.itervalues()):
+                self._done = colors.NONE
         #TODO: add aditional checks for Renju
 
 
@@ -164,35 +193,11 @@ class Board(object):
         """Check if the field has winning/draw situation"""
         # This should probably go into decorator, but having only
         # one use-case, it would a bit strange
-        result = self._done(length)
-        if result is not None:
-            self.actions.append(('STOP', (-1, -1), result))
-        return result
-
-
-    def _done(self, length):
-        # This algorithm runs in O(m * n * k) time, I wonder
-        # if there's room for improvement
-        for coord, color in self.iteritems():
-            if color is None:
-                continue
-            if all(self.get((coord[0], y)) == color
-                   for y in xrange(coord[1], coord[1] + length)):
-                return color
-            if all(self.get((x, coord[1])) == color
-                   for x in xrange(coord[0], coord[0] + length)):
-                return color
-            if all(self.get((x, x)) == color
-                   for x in xrange(coord[0], coord[0] + length)):
-                return color
-            if all(self.get((x, y)) == color
-                   for x, y in zip(xrange(coord[0], coord[0] + length),
-                                   xrange(coord[1], coord[1] - length, -1))):
-                return color
-        if all(self.itervalues()):
-            # We have nothing else to put here, so it's a draw
-            return colors.NONE
-        return None
+        if self._done:
+            self.actions.append(('STOP', (-1, -1), self._done))
+            return self._done
+        else:
+            return None
 
 
     def show(self):
@@ -205,3 +210,25 @@ class Board(object):
                          colors.WHITE: ' W '}.get(self[(x, y)], u' · ')
                 print(piece, end='')
             print()
+
+
+
+def up(coord):
+    return coord[0], coord[1] - 1
+
+
+def down(coord):
+    return coord[0], coord[1] + 1
+
+
+def left(coord):
+    return coord[0] - 1, coord[1]
+
+
+def right(coord):
+    return coord[0] + 1, coord[1]
+
+upright = lambda coord: up(right(coord))
+upleft = lambda coord: up(left(coord))
+downright = lambda coord: down(right(coord))
+downleft = lambda coord: down(left(coord))
